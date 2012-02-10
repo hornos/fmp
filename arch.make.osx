@@ -1,0 +1,8 @@
+FC  = mpif90
+CC  = mpicc
+
+DEFS     = -DCUDA 
+CFLAGS   = 
+FFLAGS   = -ffree-form -g -O0 -fopenmp  
+LDFLAGS  = -fopenmp
+CPP = /usr/local/bin/gcc $(DEFS) -E -P -C $*.F >$*.f90

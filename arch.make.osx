@@ -1,8 +1,19 @@
 FC  = mpif90
 CC  = mpicc
 
-DEFS     = -DCUDA 
+GCC = /usr/local/bin/gcc
+
+FUDA_DIR = ../fuda
+FUDA_LIB = $(FUDA_DIR)/fuda.a
+
+CUDA_HOME = /usr/local/cuda
+CUDA_DIR = $(CUDA_HOME)
+CUDA_LIB = -L$(CUDA_DIR)/lib -lcudart
+
+LDFLAGS  = -fopenmp $(FUDA_LIB) $(CUDA_LIB)
+
+DEFS     = -DFUDA
+INCS     = -I$(FUDA_DIR) 
 CFLAGS   = 
-FFLAGS   = -ffree-form -g -O0 -fopenmp  
-LDFLAGS  = -fopenmp
-CPP = /usr/local/bin/gcc $(DEFS) -E -P -C $*.F >$*.f90
+FFLAGS   = $(INCS) -ffree-form -g -O0 -fopenmp
+CPP      = $(GCC) $(DEFS) $(INCS) -E -P -C $*.F >$*.f90

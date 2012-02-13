@@ -1,6 +1,10 @@
 ! FORTRAN Multi Processor
 #include "fmp.h"
 
+#ifdef FUDA
+#include "cudaerror.h"
+#endif
+
 module fmp
   implicit none
   include 'mpif.h'
@@ -18,18 +22,23 @@ module fmp
     FMP_MPI_FAILED(ierr) then
       call mpi_abort(MPI_COMM_WORLD,rc,ierr)
       return
-    FMP_MPI_END
+    FMP_END
 
     ! global communicator
     com%mpi_com = MPI_COMM_WORLD
 
-    ! rank
-    call mpi_comm_rank(com%mpi_com,com%mpi_rank,ierr)
+    ! size
+    call mpi_comm_size(com%mpi_com,com%mpi_size,ierr)
     FMP_MPI_FAILED(ierr) &
       return
 
-    ! size
-    call mpi_comm_size(com%mpi_com,com%mpi_size,ierr)
+    ! ppn
+    call fmp_mpi_get_ppn(com%mpi_ppn,ierr)
+    FMP_MPI_FAILED(ierr) &
+      return
+
+    ! rank
+    call mpi_comm_rank(com%mpi_com,com%mpi_rank,ierr)
     FMP_MPI_FAILED(ierr) &
       return
 
@@ -40,6 +49,13 @@ module fmp
     FMP_STDIN(com)  = FMP_UNIT_STDIN
     FMP_STDOUT(com) = FMP_UNIT_STDOUT
     FMP_STDERR(com) = FMP_UNIT_STDERR
+
+    ! omp gpu
+    com%omp_size = 1
+    com%gpu_gpp  = 1
+    com%gpu_size = 1
+    com%gpu_rank = 0
+
   end subroutine fmp_mpi_init
 
 
@@ -48,24 +64,51 @@ module fmp
     integer :: ierr
     integer :: omp_get_max_threads
     type(fmpcom) :: com
-    com%omp_size=omp_get_max_threads()
+    com%omp_size = omp_get_max_threads()
   end subroutine fmp_omp_init
 
 
   subroutine fmp_gpu_init(com,ierr)
-    implicit none
-    integer :: ierr
-    type(fmpcom) :: com
-#ifdef CUDA
-    print*,'CUDA not implemented'
-#else
-    com%gpu_size=1
+#ifdef FUDA
+    use fudadevice
 #endif
-    com%gpu_rank=mod(com%mpi_size,com%gpu_size)
+    implicit none
+    integer :: i,ierr
+    type(fmpcom) :: com
+
+#ifdef FUDA
+    call fudaGetDeviceCount(com%gpu_size,ierr)
+    FMP_GPU_FAILED(ierr) &
+      return
+#else
+    com%gpu_gpp  = 1
+    com%gpu_size = 1
+#endif
+    ! check proc-gpu ratio
+    if(com%mpi_ppn.gt.com%gpu_size) then
+      ierr = 10
+      return
+    end if
+    ! gpus per mpi procs per node
+    com%gpu_gpp = com%gpu_size / com%mpi_ppn
+
+    ! gpu rank is a vector
+    com%gpu_rank = 0
+    do i = 0, com%gpu_gpp - 1
+      com%gpu_rank(i+1) = i + mod(com%mpi_rank,com%mpi_ppn)
+    end do
+
+#ifdef FUDA
+    ! set the first device
+    call fudaSetDevice(com%gpu_rank(1),ierr)
+    FMP_GPU_FAILED(ierr) &
+      return
+#endif
+
   end subroutine fmp_gpu_init
 
 
-  subroutine fmp_mpi_finalize
+  subroutine fmp_mpi_finalize(ierr)
     implicit none
     integer :: ierr
 
@@ -73,6 +116,13 @@ module fmp
     FMP_MPI_FAILED(ierr) &
       return
   end subroutine fmp_mpi_finalize
+
+
+  subroutine fmp_mpi_abort
+    implicit none
+
+    call mpi_abort()
+  end subroutine fmp_mpi_abort
 
 
   subroutine fmp_whoami(com)
@@ -93,5 +143,22 @@ module fmp
       call cpu_time(t(2))
     end do
   end subroutine fmp_mpi_sleep
+
+
+  subroutine fmp_info(com,ierr)
+    implicit none
+    type(fmpcom) :: com
+    integer :: ierr
+
+    FMP_MPI_BARRIER(com,ierr)
+    write(*,'(/,"rank   # of")')
+    write(*,'(I4,2X," MPI procs   =",I4)'),com%mpi_rank,com%mpi_size
+    write(*,'(I4,2X," MPI pernode =",I4)'),com%mpi_rank,com%mpi_ppn
+    write(*,'(I4,2X," OMP threads =",I4)'),com%mpi_rank,com%omp_size
+    write(*,'(I4,2X," GPU cards   =",I4)'),com%mpi_rank,com%gpu_size
+    write(*,'(I4,2X," GPU perproc =",I4)'),com%mpi_rank,com%gpu_gpp
+    write(*,'(I4,2X," GPU rank    =",16I4,/)'),com%mpi_rank,com%gpu_rank
+    FMP_MPI_BARRIER(com,ierr)
+  end subroutine
 
 end module fmp

@@ -3,6 +3,9 @@
 include arch.make
 
 # Fortran modules
+C_SRC  = fmpenv.c
+C_OBJ  = $(C_SRC:.c=.o)
+
 F_SRC  = fmp.F
 F_MOD  = $(F_SRC:.F=.mod)
 F_OBJ  = $(F_SRC:.F=.o)
@@ -12,8 +15,8 @@ LIB    = fmp.a
 
 all: $(LIB) $(EXE)
 
-$(LIB): $(F_OBJ)
-	ar vq $(LIB) $(F_OBJ)
+$(LIB): $(F_OBJ) $(C_OBJ)
+	ar vq $(LIB) $(F_OBJ) $(C_OBJ)
 
 $(EXE): $(F_MOD) $(EXE).o
 	$(FC) $(LDFLAGS) -o $(EXE) $(EXE).o $(LIB)

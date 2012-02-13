@@ -1,16 +1,27 @@
+#define FMPCOM_SIZE 256
+#define FMPCOM_MAX   16
+
 type fmpcom
   integer :: mpi_com
   integer :: mpi_rank
   integer :: mpi_master
-  integer,dimension(256) :: mpi_io
-  ! -np
-  integer :: mpi_size
+  integer,dimension(FMPCOM_SIZE) :: mpi_io
 
-  ! from OMP_NUM_THREADS
+  ! mpirun -np
+  ! # of MPI procs
+  integer :: mpi_size
+  integer :: mpi_ppn
+
+  ! OMP_NUM_THREADS
+  ! # of OMP threads per MPI proc
   integer :: omp_size
 
-  ! from CUDA_VISIBLE_DEVICES
+  ! count (dimension) of CUDA_VISIBLE_DEVICES per node
+  ! physical set of GPUs: (pi,pj,pk...)
+  ! per proc visible set: (0,1,2...)
   integer :: gpu_size
-  ! mod(mpi_size,gpu_size)
-  integer :: gpu_rank
+  integer :: gpu_gpp
+
+  integer,dimension(FMPCOM_MAX) :: gpu_rank
+
 end type fmpcom

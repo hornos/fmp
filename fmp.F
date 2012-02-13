@@ -71,9 +71,11 @@ module fmp
   subroutine fmp_gpu_init(com,ierr)
 #ifdef FUDA
     use fudadevice
+    use fudaerror
 #endif
     implicit none
     integer :: i,ierr
+    character(len=80) :: buf
     type(fmpcom) :: com
 
 #ifdef FUDA
@@ -151,13 +153,17 @@ module fmp
     integer :: ierr
 
     FMP_MPI_BARRIER(com,ierr)
-    write(*,'(/,"rank   # of")')
+
+    write(*,'(/,"FMP node info")')
+    write(*,'("----------------------------------------------------")')
+    write(*,'("rank   # of")')
     write(*,'(I4,2X," MPI procs   =",I4)'),com%mpi_rank,com%mpi_size
     write(*,'(I4,2X," MPI pernode =",I4)'),com%mpi_rank,com%mpi_ppn
     write(*,'(I4,2X," OMP threads =",I4)'),com%mpi_rank,com%omp_size
     write(*,'(I4,2X," GPU cards   =",I4)'),com%mpi_rank,com%gpu_size
     write(*,'(I4,2X," GPU perproc =",I4)'),com%mpi_rank,com%gpu_gpp
-    write(*,'(I4,2X," GPU rank    =",16I4,/)'),com%mpi_rank,com%gpu_rank
+    write(*,'(I4,2X," GPU rank    =",8I4)'),com%mpi_rank,com%gpu_rank
+    write(*,'("----------------------------------------------------",/)')
     FMP_MPI_BARRIER(com,ierr)
   end subroutine
 

@@ -10,7 +10,7 @@ type fmpcom
   ! mpirun -np
   ! # of MPI procs
   integer :: mpi_size
-  integer :: mpi_ppn
+  integer :: mpi_pernode
 
   ! OMP_NUM_THREADS
   ! # of OMP threads per MPI proc
@@ -20,7 +20,7 @@ type fmpcom
   ! physical set of GPUs: (pi,pj,pk...)
   ! per proc visible set: (0,1,2...)
   integer :: gpu_size
-  integer :: gpu_gpp
+  integer :: gpu_perproc
 
   integer,dimension(FMPCOM_MAX) :: gpu_rank
 

@@ -1,5 +1,5 @@
 .DS*
-*.old
+*.old*
 *.o
 *.s
 *.mod

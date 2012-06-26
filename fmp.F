@@ -16,7 +16,11 @@ module fmp
   subroutine fmp_mpi_init(com,ierr)
     implicit none
     integer :: rc,ierr
+    character(128) :: info
     type(fmpcom) :: com
+
+    ! info
+    info="(X,I3,X,'MPI Init  size: ',I4,'  pernode: ',I4)"
 
     call mpi_init(ierr)
     FMP_MPI_FAILED(ierr) then
@@ -33,7 +37,7 @@ module fmp
       return
 
     ! ppn
-    call fmp_mpi_get_ppn(com%mpi_ppn,ierr)
+    call fmp_mpi_get_ppn(com%mpi_pernode,ierr)
     FMP_MPI_FAILED(ierr) &
       return
 
@@ -52,10 +56,10 @@ module fmp
 
     ! omp gpu
     com%omp_size = 1
-    com%gpu_gpp  = 1
-    com%gpu_size = 1
+    com%gpu_perproc  = 0
+    com%gpu_size = 0
     com%gpu_rank = 0
-
+    print(info),com%mpi_rank,com%mpi_size,com%mpi_pernode
   end subroutine fmp_mpi_init
 
 
@@ -63,8 +67,12 @@ module fmp
     implicit none
     integer :: ierr
     integer :: omp_get_max_threads
+    character(128) :: info
     type(fmpcom) :: com
     com%omp_size = omp_get_max_threads()
+    ! info
+    info="(X,I3,X,'OMP Init  size: ',I4)"
+    print(info),com%mpi_rank,com%omp_size
   end subroutine fmp_omp_init
 
 
@@ -76,28 +84,31 @@ module fmp
     implicit none
     integer :: i,ierr
     character(len=80) :: buf
+    character(128) :: info
     type(fmpcom) :: com
+    ! info
+    info="(X,I3,X,'GPU Init  size: ',I4,'  perproc: ',I4)"
 
 #ifdef FUDA
     call fudaGetDeviceCount(com%gpu_size,ierr)
     FMP_GPU_FAILED(ierr) &
       return
 #else
-    com%gpu_gpp  = 1
-    com%gpu_size = 1
+    com%gpu_perproc  = 0
+    com%gpu_size = 0
 #endif
     ! check proc-gpu ratio
-    if(com%mpi_ppn.gt.com%gpu_size) then
+    if(com%mpi_pernode.gt.com%gpu_size) then
       ierr = 10
       return
     end if
     ! gpus per mpi procs per node
-    com%gpu_gpp = com%gpu_size / com%mpi_ppn
+    com%gpu_perproc = com%gpu_size / com%mpi_pernode
 
     ! gpu rank is a vector
     com%gpu_rank = 0
-    do i = 0, com%gpu_gpp - 1
-      com%gpu_rank(i+1) = i + mod(com%mpi_rank,com%mpi_ppn)
+    do i = 0, com%gpu_perproc - 1
+      com%gpu_rank(i+1) = i + mod(com%mpi_rank,com%mpi_pernode)
     end do
 
 #ifdef FUDA
@@ -106,7 +117,7 @@ module fmp
     FMP_GPU_FAILED(ierr) &
       return
 #endif
-
+    print(info),com%mpi_rank,com%gpu_size,com%gpu_perproc
   end subroutine fmp_gpu_init
 
 
@@ -158,10 +169,10 @@ module fmp
     write(*,'("----------------------------------------------------")')
     write(*,'("rank   # of")')
     write(*,'(I4,2X," MPI procs   =",I4)'),com%mpi_rank,com%mpi_size
-    write(*,'(I4,2X," MPI pernode =",I4)'),com%mpi_rank,com%mpi_ppn
+    write(*,'(I4,2X," MPI pernode =",I4)'),com%mpi_rank,com%mpi_pernode
     write(*,'(I4,2X," OMP threads =",I4)'),com%mpi_rank,com%omp_size
     write(*,'(I4,2X," GPU cards   =",I4)'),com%mpi_rank,com%gpu_size
-    write(*,'(I4,2X," GPU perproc =",I4)'),com%mpi_rank,com%gpu_gpp
+    write(*,'(I4,2X," GPU perproc =",I4)'),com%mpi_rank,com%gpu_perproc
     write(*,'(I4,2X," GPU rank    =",8I4)'),com%mpi_rank,com%gpu_rank
     write(*,'("----------------------------------------------------",/)')
     FMP_MPI_BARRIER(com,ierr)

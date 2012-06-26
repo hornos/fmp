@@ -22,18 +22,22 @@ $(EXE): $(F_MOD) $(EXE).o
 	$(FC) $(LDFLAGS) -o $(EXE) $(EXE).o $(LIB)
 
 .c.o:
-	@echo "\nC Object:" $@
+	@echo "C Object:" $@
 	$(CC) -c $(CFLAGS) $< -o $@
 
 .F.o:
-	@echo "\nF Object:" $@
+	@echo "F Object:" $@
 	$(CPP)
 	$(FC) $(FFLAGS) -c $*.f90 -o $@
 
 .F.mod:
-	@echo "\nF Module:" $@
+	@echo "F Module:" $@
 	$(CPP)
 	$(FC) $(FFLAGS) -c $*.f90
 
 clean:
 	rm -f *.o *.a *.mod *.f90
+
+fmp.o: fmp.F fmp.h fmpcom.h
+fmp.h:
+fmpcom.h:

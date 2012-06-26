@@ -4,7 +4,7 @@ gbn=${gbn%%.sh}
 
 ### mpi
 _np=${1}
-_ppn=${2}
+_ppn=${2:-${_np}}
 _prerun=""
 
 if ! test -z "${_np}" ; then
@@ -13,6 +13,7 @@ fi
 
 if ! test -z "${_ppn}" ; then
   export FMP_MPI_PERNODE=${_ppn}
+  _prerun="${_prerun} -pernode ${_ppn}"
 fi
 
 if test "${OSTYPE##darwin}" = "${OSTYPE}" ; then
